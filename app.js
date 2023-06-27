@@ -1,9 +1,73 @@
 const express = require('express');
+const path = require('path');
+const mongoose = require('mongoose');
+const methodOverride = require('method-override');
+
+const db = mongoose.connection;
+
+const Campground = require('./models/campgrounds');
 
 const app = express();
 
+mongoose.connect(
+  'mongodb+srv://chrisbradwell:PIevvb2qLW0wmljB@yelpcamp.4xbzbrh.mongodb.net/',
+  {
+    useNewUrlParser: true,
+    UseUnifiedTopology: true,
+  }
+);
+
+db.on('error', console.error.bind(console, 'Connection error:'));
+db.once('open', () => {
+  console.log('Database Connected');
+});
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+app.use(express.urlencoded({ extended: true }));
+app.use(methodOverride('_method'));
+
 app.get('/', (req, res) => {
-  res.send('Yelpcamp');
+  res.render('home');
+});
+
+app.get('/campgrounds', async (req, res) => {
+  const campgrounds = await Campground.find({});
+  res.render('campgrounds/index', { campgrounds });
+});
+
+app.get('/campgrounds/new', (req, res) => {
+  res.render('campgrounds/new');
+});
+
+app.post('/campgrounds', async (req, res) => {
+  const campground = new Campground(req.body.campground);
+  await campground.save();
+
+  res.redirect(`/campgrounds/${campground._id}`);
+});
+
+app.get('/campgrounds/:id', async (req, res) => {
+  const campground = await Campground.findById(req.params.id);
+  res.render('campgrounds/show', { campground });
+});
+
+app.get('/campgrounds/:id/edit', async (req, res) => {
+  const campground = await Campground.findById(req.params.id);
+  res.render('campgrounds/edit', { campground });
+});
+
+app.put('/campgrounds/:id', async (req, res) => {
+  const { id } = req.params;
+  Campground.findByIdAndUpdate(id, { ...req.body.campground });
+});
+
+app.delete('/campgrounds/:id', async (req, res) => {
+  const { id } = req.params;
+  await Campground.findByIdAndDelete(id);
+
+  res.redirect('/campgrounds');
 });
 
 app.listen(3000, () => {
